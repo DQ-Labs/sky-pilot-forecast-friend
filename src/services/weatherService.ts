@@ -17,37 +17,61 @@ export interface LocationData {
   country: string;
 }
 
-// Mock weather data for demonstration
-const generateMockWeather = (date: Date, index: number): WeatherData => {
-  const windSpeeds = [8, 12, 18]; // Different wind speeds for variety
-  const windSpeed = windSpeeds[index] || 8;
-  
-  const temp = 68 + Math.random() * 15; // 68-83°F
-  const humidity = 40 + Math.random() * 30; // 40-70%
-  const visibility = 8 + Math.random() * 2; // 8-10 miles
-  const precipitation = Math.random() * 20; // 0-20%
-  
-  // Determine flying condition based on wind speed and precipitation
-  let condition: 'good' | 'caution' | 'poor' = 'good';
-  if (windSpeed > 15 || precipitation > 50) {
-    condition = 'poor';
-  } else if (windSpeed > 10 || precipitation > 20) {
-    condition = 'caution';
-  }
-  
-  const descriptions = ['Clear skies', 'Partly cloudy', 'Overcast', 'Light clouds'];
-  
-  return {
-    date: date.toISOString(),
-    temp: Math.round(temp),
-    windSpeed: Math.round(windSpeed),
-    windDirection: Math.random() * 360,
-    humidity: Math.round(humidity),
-    visibility: Math.round(visibility * 10) / 10,
-    precipitation: Math.round(precipitation),
-    description: descriptions[Math.floor(Math.random() * descriptions.length)],
-    condition
+// WeatherAPI response interfaces
+interface WeatherAPIResponse {
+  current: {
+    temp_f: number;
+    wind_mph: number;
+    wind_degree: number;
+    humidity: number;
+    vis_miles: number;
+    condition: {
+      text: string;
+    };
   };
+  forecast: {
+    forecastday: Array<{
+      date: string;
+      day: {
+        maxtemp_f: number;
+        avghumidity: number;
+        maxwind_mph: number;
+        daily_chance_of_rain: number;
+        condition: {
+          text: string;
+        };
+      };
+    }>;
+  };
+  location: {
+    name: string;
+    country: string;
+  };
+}
+
+const getApiKey = (): string => {
+  const apiKey = localStorage.getItem('weatherapi_key');
+  if (!apiKey) {
+    throw new Error('WeatherAPI key not found. Please set your API key first.');
+  }
+  return apiKey;
+};
+
+export const setApiKey = (apiKey: string): void => {
+  localStorage.setItem('weatherapi_key', apiKey);
+};
+
+export const hasApiKey = (): boolean => {
+  return !!localStorage.getItem('weatherapi_key');
+};
+
+const determineCondition = (windSpeed: number, precipitation: number): 'good' | 'caution' | 'poor' => {
+  if (windSpeed > 15 || precipitation > 50) {
+    return 'poor';
+  } else if (windSpeed > 10 || precipitation > 20) {
+    return 'caution';
+  }
+  return 'good';
 };
 
 export const getCurrentLocation = (): Promise<LocationData> => {
@@ -61,14 +85,33 @@ export const getCurrentLocation = (): Promise<LocationData> => {
       async (position) => {
         const { latitude, longitude } = position.coords;
         
-        // For demo purposes, we'll use a mock location
-        // In a real app, you'd use reverse geocoding
-        resolve({
-          latitude,
-          longitude,
-          city: 'Your Location',
-          country: 'USA'
-        });
+        try {
+          const apiKey = getApiKey();
+          const response = await fetch(
+            `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${latitude},${longitude}&aqi=no`
+          );
+          
+          if (!response.ok) {
+            throw new Error(`Weather API error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          resolve({
+            latitude,
+            longitude,
+            city: data.location.name,
+            country: data.location.country
+          });
+        } catch (error) {
+          // Fallback to basic location if weather API fails
+          resolve({
+            latitude,
+            longitude,
+            city: 'Your Location',
+            country: 'Unknown'
+          });
+        }
       },
       (error) => {
         reject(new Error('Unable to retrieve your location.'));
@@ -78,16 +121,48 @@ export const getCurrentLocation = (): Promise<LocationData> => {
 };
 
 export const getWeatherForecast = async (location: LocationData): Promise<WeatherData[]> => {
-  // In a real implementation, you would call a weather API like OpenWeatherMap
-  // For demo purposes, we'll generate mock data
+  const apiKey = getApiKey();
+  
+  const response = await fetch(
+    `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${location.latitude},${location.longitude}&days=3&aqi=no&alerts=no`
+  );
+  
+  if (!response.ok) {
+    throw new Error(`Weather API error: ${response.status}`);
+  }
+  
+  const data: WeatherAPIResponse = await response.json();
   
   const forecast: WeatherData[] = [];
-  const today = new Date();
   
-  for (let i = 0; i < 3; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    forecast.push(generateMockWeather(date, i));
+  // Current day (today)
+  const today = new Date().toISOString().split('T')[0];
+  forecast.push({
+    date: today,
+    temp: Math.round(data.current.temp_f),
+    windSpeed: Math.round(data.current.wind_mph),
+    windDirection: data.current.wind_degree,
+    humidity: data.current.humidity,
+    visibility: data.current.vis_miles,
+    precipitation: data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0,
+    description: data.current.condition.text,
+    condition: determineCondition(data.current.wind_mph, data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0)
+  });
+  
+  // Next 2 days from forecast
+  for (let i = 1; i < Math.min(3, data.forecast.forecastday.length); i++) {
+    const day = data.forecast.forecastday[i];
+    forecast.push({
+      date: day.date,
+      temp: Math.round(day.day.maxtemp_f),
+      windSpeed: Math.round(day.day.maxwind_mph),
+      windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
+      humidity: day.day.avghumidity,
+      visibility: 10, // Default visibility for forecast days
+      precipitation: day.day.daily_chance_of_rain,
+      description: day.day.condition.text,
+      condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain)
+    });
   }
   
   return forecast;
