@@ -1,11 +1,147 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from "react";
+import { WeatherCard } from "@/components/WeatherCard";
+import { ConditionSummary } from "@/components/ConditionSummary";
+import { LocationHeader } from "@/components/LocationHeader";
+import { 
+  getCurrentLocation, 
+  getWeatherForecast, 
+  analyzeFlightConditions,
+  type WeatherData,
+  type LocationData 
+} from "@/services/weatherService";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [forecast, setForecast] = useState<WeatherData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const { toast } = useToast();
+
+  const loadWeatherData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get current location
+      const currentLocation = await getCurrentLocation();
+      setLocation(currentLocation);
+      
+      // Get weather forecast
+      const weatherData = await getWeatherForecast(currentLocation);
+      setForecast(weatherData);
+      
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }));
+      
+      toast({
+        title: "Weather Updated",
+        description: "Flight conditions have been refreshed.",
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Location Error",
+        description: "Unable to get your location. Using default data.",
+        variant: "destructive",
+      });
+      
+      // Fallback to mock location
+      const fallbackLocation: LocationData = {
+        latitude: 40.7128,
+        longitude: -74.0060,
+        city: "Demo Location",
+        country: "USA"
+      };
+      
+      setLocation(fallbackLocation);
+      const weatherData = await getWeatherForecast(fallbackLocation);
+      setForecast(weatherData);
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWeatherData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <h2 className="text-xl font-semibold">Loading Weather Data</h2>
+          <p className="text-muted-foreground">Getting your location and flight conditions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const analysis = forecast.length > 0 ? analyzeFlightConditions(forecast) : {
+    overallCondition: 'poor' as const,
+    recommendations: ['Unable to load weather data']
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        {/* Header */}
+        {location && (
+          <LocationHeader
+            location={`${location.city}, ${location.country}`}
+            lastUpdated={lastUpdated}
+            onRefresh={loadWeatherData}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Condition Summary */}
+        <div className="mt-6">
+          <ConditionSummary
+            overallCondition={analysis.overallCondition}
+            recommendations={analysis.recommendations}
+          />
+        </div>
+
+        {/* 3-Day Forecast */}
+        <div className="mt-6">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">3-Day Forecast</h2>
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+            {forecast.map((weather, index) => (
+              <WeatherCard
+                key={weather.date}
+                weather={weather}
+                isToday={index === 0}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Flying Tips */}
+        <div className="mt-8 p-6 bg-muted/30 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-foreground">RC Flying Tips</h3>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Wind Speed:</strong> Ideal range is 0-10 mph for most aircraft
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Visibility:</strong> Always maintain visual contact with your aircraft
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Weather:</strong> Avoid flying in rain, snow, or severe weather
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Safety:</strong> Check local regulations and airspace restrictions
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

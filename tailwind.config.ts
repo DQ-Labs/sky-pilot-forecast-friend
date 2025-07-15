@@ -52,6 +52,16 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				sky: {
+					primary: 'hsl(var(--sky-primary))',
+					light: 'hsl(var(--sky-light))',
+					dark: 'hsl(var(--sky-dark))'
+				},
+				condition: {
+					good: 'hsl(var(--condition-good))',
+					caution: 'hsl(var(--condition-caution))',
+					poor: 'hsl(var(--condition-poor))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -84,11 +94,25 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'wind-direction': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'wind-direction': 'wind-direction 4s linear infinite',
+				'fade-in': 'fade-in 0.6s ease-out'
+			},
+			backgroundImage: {
+				'gradient-sky': 'var(--gradient-sky)',
+				'gradient-conditions': 'var(--gradient-conditions)'
 			}
 		}
 	},
