@@ -1,11 +1,13 @@
 import { Card } from "@/components/ui/card";
-import { Wind, Droplets, Eye, Thermometer } from "lucide-react";
+import { Wind, Droplets, Eye, Cloud, Gauge } from "lucide-react";
 
 interface WeatherData {
   date: string;
   temp: number;
   windSpeed: number;
   windDirection: number;
+  windGustSpeed?: number;
+  cloudCeiling: number;
   humidity: number;
   visibility: number;
   precipitation: number;
@@ -51,7 +53,7 @@ export const WeatherCard = ({ weather, isToday = false }: WeatherCardProps) => {
       isToday ? 'ring-2 ring-primary/20' : ''
     } ${getConditionColor(weather.condition)}`}>
       <div className="space-y-4">
-        {/* Header */}
+        {/* Header with Prominent Wind Display */}
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-lg">{formatDate(weather.date)}</h3>
@@ -65,26 +67,36 @@ export const WeatherCard = ({ weather, isToday = false }: WeatherCardProps) => {
           </div>
         </div>
 
+        {/* Prominent Wind Information */}
+        <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Wind 
+                className="h-6 w-6 text-primary" 
+                style={{ transform: `rotate(${weather.windDirection}deg)` }}
+              />
+              <div>
+                <div className="text-lg font-bold text-primary">{weather.windSpeed} mph</div>
+                <div className="text-sm text-muted-foreground">Wind Speed</div>
+              </div>
+            </div>
+            {weather.windGustSpeed && (
+              <div className="text-right">
+                <div className="text-md font-semibold text-orange-600">{weather.windGustSpeed} mph</div>
+                <div className="text-xs text-muted-foreground">Gusts</div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Weather Details Grid */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Wind */}
-          <div className="flex items-center space-x-2">
-            <Wind 
-              className="h-4 w-4 text-primary" 
-              style={{ transform: `rotate(${weather.windDirection}deg)` }}
-            />
+          {/* Cloud Ceiling - Prominent Display */}
+          <div className="flex items-center space-x-2 p-2 bg-sky-50 rounded border border-sky-200">
+            <Cloud className="h-4 w-4 text-sky-600" />
             <div>
-              <div className="text-sm font-medium">{weather.windSpeed} mph</div>
-              <div className="text-xs text-muted-foreground">Wind</div>
-            </div>
-          </div>
-
-          {/* Humidity */}
-          <div className="flex items-center space-x-2">
-            <Droplets className="h-4 w-4 text-primary" />
-            <div>
-              <div className="text-sm font-medium">{weather.humidity}%</div>
-              <div className="text-xs text-muted-foreground">Humidity</div>
+              <div className="text-sm font-medium text-sky-800">{weather.cloudCeiling.toLocaleString()} ft</div>
+              <div className="text-xs text-sky-600">Cloud Ceiling</div>
             </div>
           </div>
 
@@ -97,12 +109,21 @@ export const WeatherCard = ({ weather, isToday = false }: WeatherCardProps) => {
             </div>
           </div>
 
+          {/* Humidity */}
+          <div className="flex items-center space-x-2">
+            <Droplets className="h-4 w-4 text-primary" />
+            <div>
+              <div className="text-sm font-medium">{weather.humidity}%</div>
+              <div className="text-xs text-muted-foreground">Humidity</div>
+            </div>
+          </div>
+
           {/* Precipitation */}
           <div className="flex items-center space-x-2">
-            <Thermometer className="h-4 w-4 text-primary" />
+            <Gauge className="h-4 w-4 text-primary" />
             <div>
               <div className="text-sm font-medium">{weather.precipitation}%</div>
-              <div className="text-xs text-muted-foreground">Precip</div>
+              <div className="text-xs text-muted-foreground">Rain Chance</div>
             </div>
           </div>
         </div>

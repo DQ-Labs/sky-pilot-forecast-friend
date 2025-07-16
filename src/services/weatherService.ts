@@ -3,6 +3,8 @@ export interface WeatherData {
   temp: number;
   windSpeed: number;
   windDirection: number;
+  windGustSpeed?: number;
+  cloudCeiling: number; // in feet
   humidity: number;
   visibility: number;
   precipitation: number;
@@ -23,6 +25,8 @@ interface WeatherAPIResponse {
     temp_f: number;
     wind_mph: number;
     wind_degree: number;
+    gust_mph?: number;
+    cloud: number; // cloud cover percentage
     humidity: number;
     vis_miles: number;
     condition: {
@@ -41,6 +45,9 @@ interface WeatherAPIResponse {
           text: string;
         };
       };
+      hour: Array<{
+        cloud: number;
+      }>;
     }>;
   };
   location: {
@@ -65,13 +72,23 @@ export const hasApiKey = (): boolean => {
   return !!localStorage.getItem('weatherapi_key');
 };
 
-const determineCondition = (windSpeed: number, precipitation: number): 'good' | 'caution' | 'poor' => {
-  if (windSpeed > 15 || precipitation > 50) {
+const determineCondition = (windSpeed: number, precipitation: number, cloudCeiling: number): 'good' | 'caution' | 'poor' => {
+  if (windSpeed > 15 || precipitation > 50 || cloudCeiling < 400) {
     return 'poor';
-  } else if (windSpeed > 10 || precipitation > 20) {
+  } else if (windSpeed > 10 || precipitation > 20 || cloudCeiling < 800) {
     return 'caution';
   }
   return 'good';
+};
+
+// Calculate approximate cloud ceiling from cloud coverage
+const calculateCloudCeiling = (cloudCover: number): number => {
+  // Rough approximation: higher cloud cover = lower ceiling
+  if (cloudCover >= 90) return 500;  // Very low ceiling
+  if (cloudCover >= 70) return 1000; // Low ceiling
+  if (cloudCover >= 50) return 2000; // Medium ceiling
+  if (cloudCover >= 20) return 4000; // High ceiling
+  return 8000; // Clear skies - very high ceiling
 };
 
 export const getCurrentLocation = (): Promise<LocationData> => {
@@ -137,31 +154,40 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   
   // Current day (today)
   const today = new Date().toISOString().split('T')[0];
+  const todayCloudCeiling = calculateCloudCeiling(data.current.cloud);
+  
   forecast.push({
     date: today,
     temp: Math.round(data.current.temp_f),
     windSpeed: Math.round(data.current.wind_mph),
     windDirection: data.current.wind_degree,
+    windGustSpeed: data.current.gust_mph ? Math.round(data.current.gust_mph) : undefined,
+    cloudCeiling: todayCloudCeiling,
     humidity: data.current.humidity,
     visibility: data.current.vis_miles,
     precipitation: data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0,
     description: data.current.condition.text,
-    condition: determineCondition(data.current.wind_mph, data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0)
+    condition: determineCondition(data.current.wind_mph, data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0, todayCloudCeiling)
   });
   
   // Next 2 days from forecast
   for (let i = 1; i < Math.min(3, data.forecast.forecastday.length); i++) {
     const day = data.forecast.forecastday[i];
+    // Calculate average cloud cover for the day
+    const avgCloudCover = day.hour.reduce((sum, hour) => sum + hour.cloud, 0) / day.hour.length;
+    const dayCloudCeiling = calculateCloudCeiling(avgCloudCover);
+    
     forecast.push({
       date: day.date,
       temp: Math.round(day.day.maxtemp_f),
       windSpeed: Math.round(day.day.maxwind_mph),
       windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
+      cloudCeiling: dayCloudCeiling,
       humidity: day.day.avghumidity,
       visibility: 10, // Default visibility for forecast days
       precipitation: day.day.daily_chance_of_rain,
       description: day.day.condition.text,
-      condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain)
+      condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain, dayCloudCeiling)
     });
   }
   
@@ -183,6 +209,23 @@ export const analyzeFlightConditions = (forecast: WeatherData[]) => {
     recommendations.push('High winds - consider larger, heavier aircraft');
   } else if (todayWeather.windSpeed < 5) {
     recommendations.push('Light winds - perfect for beginners and small aircraft');
+  }
+  
+  // Add gust warnings if present
+  if (todayWeather.windGustSpeed && todayWeather.windGustSpeed > todayWeather.windSpeed + 5) {
+    if (overallCondition === 'good') overallCondition = 'caution';
+    recommendations.push(`Gusty conditions - gusts up to ${todayWeather.windGustSpeed} mph`);
+  }
+  
+  // Analyze cloud ceiling
+  if (todayWeather.cloudCeiling < 400) {
+    overallCondition = 'poor';
+    recommendations.push('Very low cloud ceiling - dangerous for RC flying');
+  } else if (todayWeather.cloudCeiling < 800) {
+    if (overallCondition === 'good') overallCondition = 'caution';
+    recommendations.push('Low cloud ceiling - maintain low altitude flying');
+  } else if (todayWeather.cloudCeiling > 3000) {
+    recommendations.push('High cloud ceiling - excellent for altitude flying');
   }
   
   // Analyze precipitation
