@@ -56,20 +56,20 @@ interface WeatherAPIResponse {
   };
 }
 
-const getApiKey = (): string => {
-  const apiKey = localStorage.getItem('weatherapi_key');
-  if (!apiKey) {
-    throw new Error('WeatherAPI key not found. Please set your API key first.');
+// Call weather API through Supabase Edge Function
+const callWeatherAPI = async (endpoint: string, params: Record<string, any>) => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  
+  const { data, error } = await supabase.functions.invoke('weather-api', {
+    body: { endpoint, params }
+  });
+
+  if (error) {
+    console.error('Weather API function error:', error);
+    throw new Error(`Weather API error: ${error.message}`);
   }
-  return apiKey;
-};
 
-export const setApiKey = (apiKey: string): void => {
-  localStorage.setItem('weatherapi_key', apiKey);
-};
-
-export const hasApiKey = (): boolean => {
-  return !!localStorage.getItem('weatherapi_key');
+  return data;
 };
 
 const determineCondition = (windSpeed: number, precipitation: number, cloudCeiling: number): 'good' | 'caution' | 'poor' => {
@@ -103,16 +103,10 @@ export const getCurrentLocation = (): Promise<LocationData> => {
         const { latitude, longitude } = position.coords;
         
         try {
-          const apiKey = getApiKey();
-          const response = await fetch(
-            `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${latitude},${longitude}&aqi=no`
-          );
-          
-          if (!response.ok) {
-            throw new Error(`Weather API error: ${response.status}`);
-          }
-          
-          const data = await response.json();
+          const data = await callWeatherAPI('current.json', {
+            q: `${latitude},${longitude}`,
+            aqi: 'no'
+          });
           
           resolve({
             latitude,
@@ -138,17 +132,12 @@ export const getCurrentLocation = (): Promise<LocationData> => {
 };
 
 export const getWeatherForecast = async (location: LocationData): Promise<WeatherData[]> => {
-  const apiKey = getApiKey();
-  
-  const response = await fetch(
-    `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${location.latitude},${location.longitude}&days=3&aqi=no&alerts=no`
-  );
-  
-  if (!response.ok) {
-    throw new Error(`Weather API error: ${response.status}`);
-  }
-  
-  const data: WeatherAPIResponse = await response.json();
+  const data: WeatherAPIResponse = await callWeatherAPI('forecast.json', {
+    q: `${location.latitude},${location.longitude}`,
+    days: 3,
+    aqi: 'no',
+    alerts: 'no'
+  });
   
   const forecast: WeatherData[] = [];
   

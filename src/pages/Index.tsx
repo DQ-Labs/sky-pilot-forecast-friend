@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { WeatherCard } from "@/components/WeatherCard";
 import { ConditionSummary } from "@/components/ConditionSummary";
 import { LocationHeader } from "@/components/LocationHeader";
-import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { 
   getCurrentLocation, 
   getWeatherForecast, 
   analyzeFlightConditions,
-  hasApiKey,
   type WeatherData,
   type LocationData 
 } from "@/services/weatherService";
@@ -19,23 +17,11 @@ const Index = () => {
   const [forecast, setForecast] = useState<WeatherData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const { toast } = useToast();
 
-  // Check for API key on component mount
   useEffect(() => {
-    if (!hasApiKey()) {
-      setShowApiKeyDialog(true);
-      setIsLoading(false);
-    } else {
-      loadWeatherData();
-    }
-  }, []);
-
-  const handleApiKeySet = () => {
-    setShowApiKeyDialog(false);
     loadWeatherData();
-  };
+  }, []);
 
   const loadWeatherData = async () => {
     try {
@@ -61,31 +47,16 @@ const Index = () => {
       
     } catch (error) {
       toast({
-        title: "Location Error",
-        description: "Unable to get your location. Using default data.",
+        title: "Weather Error",
+        description: "Unable to load weather data. Please check your connection.",
         variant: "destructive",
       });
       
-      // Fallback to mock location
-      const fallbackLocation: LocationData = {
-        latitude: 40.7128,
-        longitude: -74.0060,
-        city: "Demo Location",
-        country: "USA"
-      };
-      
-      setLocation(fallbackLocation);
-      const weatherData = await getWeatherForecast(fallbackLocation);
-      setForecast(weatherData);
-      setLastUpdated(new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      }));
+      console.error('Weather data error:', error);
     } finally {
       setIsLoading(false);
     }
   };
-
 
   if (isLoading) {
     return (
@@ -106,7 +77,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <ApiKeyDialog open={showApiKeyDialog} onApiKeySet={handleApiKeySet} />
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
         {location && (
