@@ -120,13 +120,17 @@ const Index = () => {
                   3-Day Forecast
                 </h2>
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-                  {forecast.map((weather, index) => (
-                    <WeatherCard
-                      key={weather.date}
-                      weather={weather}
-                      isToday={index === 0}
-                    />
-                  ))}
+                  {forecast.map((weather, index) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const isToday = weather.date === today;
+                    return (
+                      <WeatherCard
+                        key={weather.date}
+                        weather={weather}
+                        isToday={isToday}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 

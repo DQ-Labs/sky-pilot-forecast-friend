@@ -140,46 +140,56 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   });
   
   const forecast: WeatherData[] = [];
+  const localToday = new Date().toISOString().split('T')[0];
   
-  // Current day (today)
-  const today = new Date().toISOString().split('T')[0];
-  const todayCloudCeiling = calculateCloudCeiling(data.current.cloud);
+  console.log('Local today:', localToday);
+  console.log('Forecast days from API:', data.forecast.forecastday.map(d => d.date));
   
-  forecast.push({
-    date: today,
-    temp: Math.round(data.current.temp_f),
-    windSpeed: Math.round(data.current.wind_mph),
-    windDirection: data.current.wind_degree,
-    windGustSpeed: data.current.gust_mph ? Math.round(data.current.gust_mph) : undefined,
-    cloudCeiling: todayCloudCeiling,
-    humidity: data.current.humidity,
-    visibility: data.current.vis_miles,
-    precipitation: data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0,
-    description: data.current.condition.text,
-    condition: determineCondition(data.current.wind_mph, data.forecast.forecastday[0]?.day.daily_chance_of_rain || 0, todayCloudCeiling)
-  });
-  
-  // Next 2 days from forecast
-  for (let i = 1; i < Math.min(3, data.forecast.forecastday.length); i++) {
+  // Process all forecast days from the API
+  for (let i = 0; i < Math.min(3, data.forecast.forecastday.length); i++) {
     const day = data.forecast.forecastday[i];
-    // Calculate average cloud cover for the day
-    const avgCloudCover = day.hour.reduce((sum, hour) => sum + hour.cloud, 0) / day.hour.length;
-    const dayCloudCeiling = calculateCloudCeiling(avgCloudCover);
+    const isToday = day.date === localToday;
     
-    forecast.push({
-      date: day.date,
-      temp: Math.round(day.day.maxtemp_f),
-      windSpeed: Math.round(day.day.maxwind_mph),
-      windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
-      cloudCeiling: dayCloudCeiling,
-      humidity: day.day.avghumidity,
-      visibility: 10, // Default visibility for forecast days
-      precipitation: day.day.daily_chance_of_rain,
-      description: day.day.condition.text,
-      condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain, dayCloudCeiling)
-    });
+    console.log(`Processing day ${i}: ${day.date}, isToday: ${isToday}`);
+    
+    if (isToday) {
+      // Use current weather data for today
+      const todayCloudCeiling = calculateCloudCeiling(data.current.cloud);
+      
+      forecast.push({
+        date: day.date,
+        temp: Math.round(data.current.temp_f),
+        windSpeed: Math.round(data.current.wind_mph),
+        windDirection: data.current.wind_degree,
+        windGustSpeed: data.current.gust_mph ? Math.round(data.current.gust_mph) : undefined,
+        cloudCeiling: todayCloudCeiling,
+        humidity: data.current.humidity,
+        visibility: data.current.vis_miles,
+        precipitation: day.day.daily_chance_of_rain,
+        description: data.current.condition.text,
+        condition: determineCondition(data.current.wind_mph, day.day.daily_chance_of_rain, todayCloudCeiling)
+      });
+    } else {
+      // Use forecast data for future days
+      const avgCloudCover = day.hour.reduce((sum, hour) => sum + hour.cloud, 0) / day.hour.length;
+      const dayCloudCeiling = calculateCloudCeiling(avgCloudCover);
+      
+      forecast.push({
+        date: day.date,
+        temp: Math.round(day.day.maxtemp_f),
+        windSpeed: Math.round(day.day.maxwind_mph),
+        windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
+        cloudCeiling: dayCloudCeiling,
+        humidity: day.day.avghumidity,
+        visibility: 10, // Default visibility for forecast days
+        precipitation: day.day.daily_chance_of_rain,
+        description: day.day.condition.text,
+        condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain, dayCloudCeiling)
+      });
+    }
   }
   
+  console.log('Final forecast dates:', forecast.map(f => f.date));
   return forecast;
 };
 
