@@ -145,13 +145,13 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   console.log('Local today:', localToday);
   console.log('Forecast days from API:', data.forecast.forecastday.map(d => d.date));
   
-  // Filter out past days and only keep today + next 2 days
+  // Filter out past days and only keep today + tomorrow
   const futureDays = data.forecast.forecastday.filter(day => day.date >= localToday);
   
   console.log('Future days (including today):', futureDays.map(d => d.date));
   
-  // Process only the next 3 days starting from today
-  for (let i = 0; i < Math.min(3, futureDays.length); i++) {
+  // Process only the next 2 days starting from today
+  for (let i = 0; i < Math.min(2, futureDays.length); i++) {
     const day = futureDays[i];
     const isToday = day.date === localToday;
     

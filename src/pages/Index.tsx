@@ -113,22 +113,27 @@ const Index = () => {
             </TabsList>
 
             <TabsContent value="forecast" className="space-y-6 mt-6">
-              {/* 3-Day Forecast */}
+              {/* 2-Day Forecast */}
               <div>
                 <h2 className="text-2xl font-bold mb-4 text-foreground flex items-center gap-2">
                   <CloudSun className="h-6 w-6" />
-                  3-Day Forecast
+                  Weather Forecast
                 </h2>
-                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+                <div className="flex flex-col lg:flex-row gap-4">
                   {forecast.map((weather, index) => {
                     const today = new Date().toISOString().split('T')[0];
                     const isToday = weather.date === today;
                     return (
-                      <WeatherCard
+                      <div 
                         key={weather.date}
-                        weather={weather}
-                        isToday={isToday}
-                      />
+                        className={`${isToday ? 'lg:flex-1' : 'lg:w-80'} transition-all duration-300`}
+                      >
+                        <WeatherCard
+                          weather={weather}
+                          isToday={isToday}
+                          variant={isToday ? 'primary' : 'secondary'}
+                        />
+                      </div>
                     );
                   })}
                 </div>
