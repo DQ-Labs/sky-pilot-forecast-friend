@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { WeatherCard } from "@/components/WeatherCard";
 import { ConditionSummary } from "@/components/ConditionSummary";
 import { LocationHeader } from "@/components/LocationHeader";
+import { AviationWeather } from "@/components/AviationWeather";
 import { 
   getCurrentLocation, 
   getWeatherForecast, 
@@ -10,7 +11,8 @@ import {
   type LocationData 
 } from "@/services/weatherService";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, CloudSun, Plane } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -96,37 +98,62 @@ const Index = () => {
           />
         </div>
 
-        {/* 3-Day Forecast */}
+        {/* Weather Tabs */}
         <div className="mt-6">
-          <h2 className="text-2xl font-bold mb-4 text-foreground">3-Day Forecast</h2>
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-            {forecast.map((weather, index) => (
-              <WeatherCard
-                key={weather.date}
-                weather={weather}
-                isToday={index === 0}
-              />
-            ))}
-          </div>
-        </div>
+          <Tabs defaultValue="forecast" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="forecast" className="flex items-center gap-2">
+                <CloudSun className="h-4 w-4" />
+                General Weather
+              </TabsTrigger>
+              <TabsTrigger value="aviation" className="flex items-center gap-2">
+                <Plane className="h-4 w-4" />
+                Aviation Weather
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Flying Tips */}
-        <div className="mt-8 p-6 bg-muted/30 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3 text-foreground">RC Flying Tips</h3>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Wind Speed:</strong> Ideal range is 0-10 mph for most aircraft
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Visibility:</strong> Always maintain visual contact with your aircraft
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Weather:</strong> Avoid flying in rain, snow, or severe weather
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Safety:</strong> Check local regulations and airspace restrictions
-            </div>
-          </div>
+            <TabsContent value="forecast" className="space-y-6 mt-6">
+              {/* 3-Day Forecast */}
+              <div>
+                <h2 className="text-2xl font-bold mb-4 text-foreground flex items-center gap-2">
+                  <CloudSun className="h-6 w-6" />
+                  3-Day Forecast
+                </h2>
+                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+                  {forecast.map((weather, index) => (
+                    <WeatherCard
+                      key={weather.date}
+                      weather={weather}
+                      isToday={index === 0}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Flying Tips */}
+              <div className="p-6 bg-muted/30 rounded-lg">
+                <h3 className="text-lg font-semibold mb-3 text-foreground">RC Flying Tips</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Wind Speed:</strong> Ideal range is 0-10 mph for most aircraft
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Visibility:</strong> Always maintain visual contact with your aircraft
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Weather:</strong> Avoid flying in rain, snow, or severe weather
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Safety:</strong> Check local regulations and airspace restrictions
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="aviation" className="mt-6">
+              {location && <AviationWeather location={location} />}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

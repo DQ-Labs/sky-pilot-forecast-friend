@@ -2,3 +2,6 @@ project_id = "zybdhttbttyoitqdsuoq"
 
 [functions.weather-api]
 verify_jwt = false
+
+[functions.checkwx-api]
+verify_jwt = false
