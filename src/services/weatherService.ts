@@ -146,53 +146,47 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   console.log('Local today:', localToday);
   console.log('Forecast days from API:', data.forecast.forecastday.map(d => d.date));
   
-  // Filter out past days and only keep today + tomorrow
-  const futureDays = data.forecast.forecastday.filter(day => day.date >= localToday);
+  // Add today's weather using current data
+  const todayCloudCeiling = calculateCloudCeiling(data.current.cloud);
+  const todayForecastDay = data.forecast.forecastday.find(day => day.date === localToday);
   
-  console.log('Future days (including today):', futureDays.map(d => d.date));
+  forecast.push({
+    date: localToday,
+    temp: Math.round(data.current.temp_f),
+    windSpeed: Math.round(data.current.wind_mph),
+    windDirection: data.current.wind_degree,
+    windGustSpeed: data.current.gust_mph ? Math.round(data.current.gust_mph) : undefined,
+    cloudCeiling: todayCloudCeiling,
+    humidity: data.current.humidity,
+    visibility: data.current.vis_miles,
+    precipitation: todayForecastDay?.day.daily_chance_of_rain || 0,
+    description: data.current.condition.text,
+    condition: determineCondition(data.current.wind_mph, todayForecastDay?.day.daily_chance_of_rain || 0, todayCloudCeiling)
+  });
   
-  // Process only the next 2 days starting from today
-  for (let i = 0; i < Math.min(2, futureDays.length); i++) {
-    const day = futureDays[i];
-    const isToday = day.date === localToday;
+  console.log('Added today:', localToday);
+  
+  // Find tomorrow's forecast (skip today since we already processed it)
+  const tomorrowDay = data.forecast.forecastday.find(day => day.date > localToday);
+  
+  if (tomorrowDay) {
+    console.log('Adding tomorrow:', tomorrowDay.date);
     
-    console.log(`Processing day ${i}: ${day.date}, isToday: ${isToday}`);
+    const avgCloudCover = tomorrowDay.hour.reduce((sum, hour) => sum + hour.cloud, 0) / tomorrowDay.hour.length;
+    const dayCloudCeiling = calculateCloudCeiling(avgCloudCover);
     
-    if (isToday) {
-      // Use current weather data for today
-      const todayCloudCeiling = calculateCloudCeiling(data.current.cloud);
-      
-      forecast.push({
-        date: day.date,
-        temp: Math.round(data.current.temp_f),
-        windSpeed: Math.round(data.current.wind_mph),
-        windDirection: data.current.wind_degree,
-        windGustSpeed: data.current.gust_mph ? Math.round(data.current.gust_mph) : undefined,
-        cloudCeiling: todayCloudCeiling,
-        humidity: data.current.humidity,
-        visibility: data.current.vis_miles,
-        precipitation: day.day.daily_chance_of_rain,
-        description: data.current.condition.text,
-        condition: determineCondition(data.current.wind_mph, day.day.daily_chance_of_rain, todayCloudCeiling)
-      });
-    } else {
-      // Use forecast data for future days
-      const avgCloudCover = day.hour.reduce((sum, hour) => sum + hour.cloud, 0) / day.hour.length;
-      const dayCloudCeiling = calculateCloudCeiling(avgCloudCover);
-      
-      forecast.push({
-        date: day.date,
-        temp: Math.round(day.day.maxtemp_f),
-        windSpeed: Math.round(day.day.maxwind_mph),
-        windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
-        cloudCeiling: dayCloudCeiling,
-        humidity: day.day.avghumidity,
-        visibility: 10, // Default visibility for forecast days
-        precipitation: day.day.daily_chance_of_rain,
-        description: day.day.condition.text,
-        condition: determineCondition(day.day.maxwind_mph, day.day.daily_chance_of_rain, dayCloudCeiling)
-      });
-    }
+    forecast.push({
+      date: tomorrowDay.date,
+      temp: Math.round(tomorrowDay.day.maxtemp_f),
+      windSpeed: Math.round(tomorrowDay.day.maxwind_mph),
+      windDirection: 0, // WeatherAPI doesn't provide forecast wind direction
+      cloudCeiling: dayCloudCeiling,
+      humidity: tomorrowDay.day.avghumidity,
+      visibility: 10, // Default visibility for forecast days
+      precipitation: tomorrowDay.day.daily_chance_of_rain,
+      description: tomorrowDay.day.condition.text,
+      condition: determineCondition(tomorrowDay.day.maxwind_mph, tomorrowDay.day.daily_chance_of_rain, dayCloudCeiling)
+    });
   }
   
   console.log('Final forecast dates:', forecast.map(f => f.date));
