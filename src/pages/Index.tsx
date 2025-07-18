@@ -10,6 +10,7 @@ import {
   type WeatherData,
   type LocationData 
 } from "@/services/weatherService";
+import { getLocalDateString } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CloudSun, Plane } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -121,7 +122,7 @@ const Index = () => {
                 </h2>
                 <div className="flex flex-col lg:flex-row gap-4">
                   {forecast.map((weather, index) => {
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = getLocalDateString();
                     const isToday = weather.date === today;
                     return (
                       <div 
