@@ -140,7 +140,9 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   });
   
   const forecast: WeatherData[] = [];
-  const localToday = new Date().toISOString().split('T')[0];
+  const localToday = new Date().getFullYear() + '-' + 
+    String(new Date().getMonth() + 1).padStart(2, '0') + '-' + 
+    String(new Date().getDate()).padStart(2, '0');
   
   console.log('Local today:', localToday);
   console.log('Forecast days from API:', data.forecast.forecastday.map(d => d.date));
