@@ -167,7 +167,11 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   console.log('Added today:', localToday);
   
   // Find tomorrow's forecast (skip today since we already processed it)
-  const tomorrowDay = data.forecast.forecastday.find(day => day.date > localToday);
+  const today = new Date(localToday);
+  const tomorrowDay = data.forecast.forecastday.find(day => {
+    const dayDate = new Date(day.date);
+    return dayDate > today;
+  });
   
   if (tomorrowDay) {
     console.log('Adding tomorrow:', tomorrowDay.date);
