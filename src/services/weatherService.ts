@@ -72,7 +72,7 @@ const callWeatherAPI = async (endpoint: string, params: Record<string, any>) => 
   return data;
 };
 
-const determineCondition = (windSpeed: number, precipitation: number, cloudCeiling: number): 'good' | 'caution' | 'poor' => {
+export const determineCondition = (windSpeed: number, precipitation: number, cloudCeiling: number): 'good' | 'caution' | 'poor' => {
   if (windSpeed > 15 || precipitation > 50 || cloudCeiling < 400) {
     return 'poor';
   } else if (windSpeed > 10 || precipitation > 20 || cloudCeiling < 800) {
@@ -82,7 +82,7 @@ const determineCondition = (windSpeed: number, precipitation: number, cloudCeili
 };
 
 // Calculate approximate cloud ceiling from cloud coverage
-const calculateCloudCeiling = (cloudCover: number): number => {
+export const calculateCloudCeiling = (cloudCover: number): number => {
   // Rough approximation: higher cloud cover = lower ceiling
   if (cloudCover >= 90) return 500;  // Very low ceiling
   if (cloudCover >= 70) return 1000; // Low ceiling
