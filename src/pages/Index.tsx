@@ -122,8 +122,8 @@ const Index = () => {
                 </h2>
                 <div className="flex flex-col lg:flex-row gap-4">
                   {forecast.map((weather, index) => {
-                    const today = getLocalDateString();
-                    const isToday = weather.date === today;
+                    // First item in forecast is always today (based on weatherService logic)
+                    const isToday = index === 0;
                     return (
                       <div 
                         key={weather.date}
