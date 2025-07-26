@@ -41,7 +41,12 @@ export const WeatherCard = ({ weather, isToday = false, variant = 'primary' }: W
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Parse date string as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
+    
+    console.log('WeatherCard formatDate:', { dateString, parsedDate: date, isToday });
+    
     return isToday ? 'Today' : date.toLocaleDateString('en-US', { 
       weekday: 'short', 
       month: 'short', 
