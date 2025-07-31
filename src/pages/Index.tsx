@@ -7,6 +7,7 @@ import {
   getCurrentLocation, 
   getWeatherForecast, 
   analyzeFlightConditions,
+  getEnhancedFlightAnalysis,
   type WeatherData,
   type LocationData 
 } from "@/services/weatherService";
@@ -20,6 +21,8 @@ const Index = () => {
   const [forecast, setForecast] = useState<WeatherData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [enhancedAnalysis, setEnhancedAnalysis] = useState<any>(null);
+  const [analysisSource, setAnalysisSource] = useState<'n8n-llm' | 'fallback'>('fallback');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,6 +41,16 @@ const Index = () => {
       const weatherData = await getWeatherForecast(currentLocation);
       setForecast(weatherData);
       
+      // Try to get enhanced analysis from n8n/LLM
+      try {
+        const enhanced = await getEnhancedFlightAnalysis(weatherData, currentLocation);
+        setEnhancedAnalysis(enhanced);
+        setAnalysisSource(enhanced.source);
+      } catch (error) {
+        console.log('Enhanced analysis failed:', error);
+        setAnalysisSource('fallback');
+      }
+      
       setLastUpdated(new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
@@ -45,7 +58,7 @@ const Index = () => {
       
       toast({
         title: "Weather Updated",
-        description: "Flight conditions have been refreshed.",
+        description: analysisSource === 'n8n-llm' ? "Enhanced AI analysis loaded!" : "Flight conditions refreshed.",
       });
       
     } catch (error) {
@@ -73,7 +86,11 @@ const Index = () => {
     );
   }
 
-  const analysis = forecast.length > 0 ? analyzeFlightConditions(forecast) : {
+  // Use enhanced analysis if available, otherwise fallback to basic analysis
+  const analysis = enhancedAnalysis?.success ? {
+    overallCondition: enhancedAnalysis.overallCondition,
+    recommendations: enhancedAnalysis.recommendations
+  } : forecast.length > 0 ? analyzeFlightConditions(forecast) : {
     overallCondition: 'poor' as const,
     recommendations: ['Unable to load weather data']
   };
@@ -96,6 +113,8 @@ const Index = () => {
           <ConditionSummary
             overallCondition={analysis.overallCondition}
             recommendations={analysis.recommendations}
+            analysisSource={analysisSource}
+            enhancedAnalysis={enhancedAnalysis}
           />
         </div>
 

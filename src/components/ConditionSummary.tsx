@@ -4,9 +4,11 @@ import { CheckCircle, AlertTriangle, XCircle, Plane } from "lucide-react";
 interface ConditionSummaryProps {
   overallCondition: 'good' | 'caution' | 'poor';
   recommendations: string[];
+  analysisSource?: 'n8n-llm' | 'fallback';
+  enhancedAnalysis?: any;
 }
 
-export const ConditionSummary = ({ overallCondition, recommendations }: ConditionSummaryProps) => {
+export const ConditionSummary = ({ overallCondition, recommendations, analysisSource, enhancedAnalysis }: ConditionSummaryProps) => {
   const getConditionInfo = (condition: string) => {
     switch (condition) {
       case 'good':
@@ -68,7 +70,19 @@ export const ConditionSummary = ({ overallCondition, recommendations }: Conditio
           
           <p className="text-muted-foreground mb-4">
             {conditionInfo.subtitle}
+            {analysisSource === 'n8n-llm' && (
+              <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                AI Enhanced
+              </span>
+            )}
           </p>
+
+          {enhancedAnalysis?.analysis?.detailedExplanation && (
+            <div className="mb-4 p-3 bg-muted/20 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">Detailed Analysis:</h4>
+              <p className="text-sm text-muted-foreground">{enhancedAnalysis.analysis.detailedExplanation}</p>
+            </div>
+          )}
 
           {recommendations.length > 0 && (
             <div className="space-y-2">

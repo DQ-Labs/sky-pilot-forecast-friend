@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.checkwx-api]
 verify_jwt = false
+
+[functions.n8n-weather-analysis]
+verify_jwt = false

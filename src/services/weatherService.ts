@@ -72,6 +72,22 @@ const callWeatherAPI = async (endpoint: string, params: Record<string, any>) => 
   return data;
 };
 
+// Call n8n weather analysis through Supabase Edge Function
+const callN8NAnalysis = async (weatherData: WeatherData[], location: LocationData) => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  
+  const { data, error } = await supabase.functions.invoke('n8n-weather-analysis', {
+    body: { weatherData, location }
+  });
+
+  if (error) {
+    console.error('N8N analysis function error:', error);
+    throw new Error(`N8N analysis error: ${error.message}`);
+  }
+
+  return data;
+};
+
 export const determineCondition = (windSpeed: number, precipitation: number, cloudCeiling: number): 'good' | 'caution' | 'poor' => {
   if (windSpeed > 15 || precipitation > 50 || cloudCeiling < 400) {
     return 'poor';
@@ -195,6 +211,49 @@ export const getWeatherForecast = async (location: LocationData): Promise<Weathe
   
   console.log('Final forecast dates:', forecast.map(f => f.date));
   return forecast;
+};
+
+// Enhanced flight condition analysis with n8n/LLM integration
+export const getEnhancedFlightAnalysis = async (forecast: WeatherData[], location: LocationData): Promise<{
+  analysis?: any;
+  source: 'n8n-llm' | 'fallback';
+  success: boolean;
+  overallCondition: 'good' | 'caution' | 'poor';
+  recommendations: string[];
+}> => {
+  try {
+    console.log('Attempting enhanced analysis via n8n...');
+    
+    const response = await callN8NAnalysis(forecast, location);
+    
+    if (response.success && response.analysis) {
+      // Parse LLM analysis and extract condition/recommendations
+      const llmAnalysis = response.analysis;
+      
+      return {
+        analysis: llmAnalysis,
+        source: 'n8n-llm',
+        success: true,
+        overallCondition: llmAnalysis.overallCondition || 'caution',
+        recommendations: llmAnalysis.recommendations || []
+      };
+    }
+    
+    throw new Error('n8n analysis failed or returned invalid data');
+    
+  } catch (error) {
+    console.log('Enhanced analysis failed, using fallback:', error.message);
+    
+    // Fallback to existing rule-based analysis
+    const fallbackAnalysis = analyzeFlightConditions(forecast);
+    
+    return {
+      source: 'fallback',
+      success: false,
+      overallCondition: fallbackAnalysis.overallCondition,
+      recommendations: fallbackAnalysis.recommendations
+    };
+  }
 };
 
 export const analyzeFlightConditions = (forecast: WeatherData[]) => {
